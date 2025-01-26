@@ -142,6 +142,7 @@
                     tile.className = value ? "tile" : "tile hidden";
                 }
             }
+            checkGameOver();
         }
 
         function slide(row) {
@@ -273,8 +274,19 @@
                 handleSwipe(dx, dy);
             }
             isSwipe = false;
+            checkGameOver();
         });
-
+   function checkGameOver() {
+            for (let r = 0; r < SIZE; r++) {
+                for (let c = 0; c < SIZE; c++) {
+                    if (grid[r][c] === 0) return;
+                    if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return;
+                    if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return;
+                }
+            }
+            alert("Game Over! Restarting...");
+            init(); // Clear the board
+        }
         init();
     </script>
 </body>

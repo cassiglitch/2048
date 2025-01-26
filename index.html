@@ -36,6 +36,11 @@
             font-weight: bold;
             border-radius: 5px;
             color: #776e65;
+            box-sizing: border-box;
+        }
+        .tile.selected {
+            outline: 3px solid #4caf50;
+            outline-offset: -3px;
         }
         .tile[data-value="2"] { background: #eee4da; }
         .tile[data-value="4"] { background: #ede0c8; }
@@ -92,6 +97,7 @@
         let swapReady = false;
         let firstTile = null;
         let swapInterval;
+        let swipingDisabled = false;
 
         // Variables for swipe detection
         let startTouch = { x: 0, y: 0 };
@@ -189,12 +195,20 @@
 
             if (!firstTile) {
                 firstTile = { r, c };
+                const tile = container.children[index];
+                tile.classList.add("selected"); // Add green outline
             } else {
                 const secondTile = { r, c };
                 swapTiles(firstTile, secondTile);
                 firstTile = null;
                 swapReady = false;
+                swipingDisabled = false; // Re-enable swiping
                 cooldownBar.classList.remove("ready");
+                updateGrid();
+
+                const selectedTile = container.querySelector(".selected");
+                if (selectedTile) selectedTile.classList.remove("selected"); // Remove green outline
+
                 startCooldown();
             }
         }
@@ -203,7 +217,6 @@
             const temp = grid[tile1.r][tile1.c];
             grid[tile1.r][tile1.c] = grid[tile2.r][tile2.c];
             grid[tile2.r][tile2.c] = temp;
-            updateGrid();
         }
 
         function startCooldown() {
@@ -220,26 +233,29 @@
                     cooldownBar.style.width = "100%";
                     cooldownBar.classList.add("ready");
                     swapReady = true;
+                    swipingDisabled = true; // Disable swiping until cooldown restarts
                 }
             }, 100);
         }
 
         function handleSwipe(dx, dy) {
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 30) slideRight();
-                else if (dx < -30) slideLeft();
-            } else {
-                if (dy > 30) slideDown();
-                else if (dy < -30) slideUp();
+            if (!swipingDisabled) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    if (dx > 30) slideRight();
+                    else if (dx < -30) slideLeft();
+                } else {
+                    if (dy > 30) slideDown();
+                    else if (dy < -30) slideUp();
+                }
+                addRandomTile();
+                updateGrid();
             }
-            addRandomTile();
-            updateGrid();
         }
 
+        // Touch event listeners
         container.addEventListener('touchstart', (e) => {
-            startTouch.x = e.touches[0].clientX;
-            startTouch.y = e.touches[0].clientY;
-            isSwipe = true;
+            startTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            isSwipe = false;
         });
 
         container.addEventListener('touchmove', (e) => {

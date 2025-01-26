@@ -256,8 +256,28 @@
             init();
         }
 
-        document.addEventListener("keydown", handleKey);
+        // Swipe Events
+        let startTouch = { x: 0, y: 0 };
+        container.addEventListener('touchstart', (e) => {
+            startTouch.x = e.touches[0].clientX;
+            startTouch.y = e.touches[0].clientY;
+        });
 
+        container.addEventListener('touchend', (e) => {
+            const endTouch = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            const dx = endTouch.x - startTouch.x;
+            const dy = endTouch.y - startTouch.y;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) handleKey({ key: 'ArrowRight' });
+                else handleKey({ key: 'ArrowLeft' });
+            } else {
+                if (dy > 0) handleKey({ key: 'ArrowDown' });
+                else handleKey({ key: 'ArrowUp' });
+            }
+        });
+
+        window.addEventListener("keydown", handleKey);
         init();
     </script>
 </body>

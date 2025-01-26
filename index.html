@@ -8,8 +8,9 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
             margin: 0;
             background: #faf8ef;
@@ -49,18 +50,48 @@
         .hidden {
             opacity: 0;
         }
+        .cooldown-container {
+            margin-top: 20px;
+            width: 400px;
+            height: 20px;
+            background: #ccc;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        .cooldown-bar {
+            height: 100%;
+            background: #76c7c0;
+            width: 0%;
+            transition: width 0.5s linear;
+        }
+        .ready {
+            background: #76c7c0;
+            animation: flash 0.5s infinite alternate;
+        }
+        @keyframes flash {
+            0% { background-color: #76c7c0; }
+            100% { background-color: #4caf50; }
+        }
     </style>
 </head>
 <body>
     <div class="game-container" id="game">
         <!-- Tiles will be dynamically generated -->
     </div>
+    <div class="cooldown-container">
+        <div class="cooldown-bar" id="cooldown-bar"></div>
+    </div>
 
     <script>
         const SIZE = 4; // Grid size: 4x4
         const container = document.getElementById("game");
+        const cooldownBar = document.getElementById("cooldown-bar");
         let grid = [];
         let startX = 0, startY = 0, endX = 0, endY = 0;
+        let swapReady = false;
+        let firstTile = null;
+        let swapInterval;
 
         function init() {
             // Initialize the grid with zeros
@@ -70,11 +101,13 @@
             for (let i = 0; i < SIZE * SIZE; i++) {
                 const tile = document.createElement("div");
                 tile.className = "tile hidden";
+                tile.addEventListener("click", () => handleTileClick(i));
                 container.appendChild(tile);
             }
             addRandomTile();
             addRandomTile();
             updateGrid();
+            startCooldown();
         }
 
         function addRandomTile() {
@@ -168,30 +201,47 @@
             checkGameOver();
         }
 
-        function handleTouchStart(e) {
-            const touch = e.touches[0];
-            startX = touch.clientX;
-            startY = touch.clientY;
+        function handleTileClick(index) {
+            if (!swapReady) return;
+
+            const r = Math.floor(index / SIZE);
+            const c = index % SIZE;
+
+            if (!firstTile) {
+                firstTile = { r, c };
+            } else {
+                const secondTile = { r, c };
+                swapTiles(firstTile, secondTile);
+                firstTile = null;
+                swapReady = false;
+                cooldownBar.classList.remove("ready");
+                startCooldown();
+            }
         }
 
-        function handleTouchEnd(e) {
-            const touch = e.changedTouches[0];
-            endX = touch.clientX;
-            endY = touch.clientY;
-
-            const dx = endX - startX;
-            const dy = endY - startY;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) slideRight();
-                else slideLeft();
-            } else {
-                if (dy > 0) slideDown();
-                else slideUp();
-            }
-            addRandomTile();
+        function swapTiles(tile1, tile2) {
+            const temp = grid[tile1.r][tile1.c];
+            grid[tile1.r][tile1.c] = grid[tile2.r][tile2.c];
+            grid[tile2.r][tile2.c] = temp;
             updateGrid();
-            checkGameOver();
+        }
+
+        function startCooldown() {
+            let progress = 0;
+            cooldownBar.style.width = "0%";
+            clearInterval(swapInterval);
+
+            swapInterval = setInterval(() => {
+                progress += 1;
+                cooldownBar.style.width = `${(progress / 300) * 100}%`;
+
+                if (progress >= 300) {
+                    clearInterval(swapInterval);
+                    cooldownBar.style.width = "100%";
+                    cooldownBar.classList.add("ready");
+                    swapReady = true;
+                }
+            }, 100);
         }
 
         function checkGameOver() {
@@ -203,12 +253,10 @@
                 }
             }
             alert("Game Over! Restarting...");
-            init(); // Clear the board
+            init();
         }
 
         document.addEventListener("keydown", handleKey);
-        container.addEventListener("touchstart", handleTouchStart);
-        container.addEventListener("touchend", handleTouchEnd);
 
         init();
     </script>

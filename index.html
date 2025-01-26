@@ -25,6 +25,7 @@
             width: 400px;
             height: 400px;
             touch-action: none;
+            position: relative;
         }
         .tile {
             background: #cdc1b4;
@@ -88,16 +89,17 @@
         const container = document.getElementById("game");
         const cooldownBar = document.getElementById("cooldown-bar");
         let grid = [];
-        let startX = 0, startY = 0, endX = 0, endY = 0;
         let swapReady = false;
         let firstTile = null;
         let swapInterval;
 
+        // Variables for swipe detection
+        let startTouch = { x: 0, y: 0 };
+        let isSwipe = false;
+
         function init() {
-            // Initialize the grid with zeros
             grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
             container.innerHTML = '';
-            // Create 16 tiles (4x4)
             for (let i = 0; i < SIZE * SIZE; i++) {
                 const tile = document.createElement("div");
                 tile.className = "tile hidden";
@@ -179,28 +181,6 @@
             }
         }
 
-        function handleKey(e) {
-            switch (e.key) {
-                case "ArrowLeft":
-                    slideLeft();
-                    break;
-                case "ArrowRight":
-                    slideRight();
-                    break;
-                case "ArrowUp":
-                    slideUp();
-                    break;
-                case "ArrowDown":
-                    slideDown();
-                    break;
-                default:
-                    return;
-            }
-            addRandomTile();
-            updateGrid();
-            checkGameOver();
-        }
-
         function handleTileClick(index) {
             if (!swapReady) return;
 
@@ -244,40 +224,41 @@
             }, 100);
         }
 
-        function checkGameOver() {
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    if (grid[r][c] === 0) return;
-                    if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return;
-                    if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return;
-                }
+        function handleSwipe(dx, dy) {
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 30) slideRight();
+                else if (dx < -30) slideLeft();
+            } else {
+                if (dy > 30) slideDown();
+                else if (dy < -30) slideUp();
             }
-            alert("Game Over! Restarting...");
-            init();
+            addRandomTile();
+            updateGrid();
         }
 
-        // Swipe Events
-        let startTouch = { x: 0, y: 0 };
         container.addEventListener('touchstart', (e) => {
             startTouch.x = e.touches[0].clientX;
             startTouch.y = e.touches[0].clientY;
+            isSwipe = true;
         });
 
-        container.addEventListener('touchend', (e) => {
-            const endTouch = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-            const dx = endTouch.x - startTouch.x;
-            const dy = endTouch.y - startTouch.y;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                if (dx > 0) handleKey({ key: 'ArrowRight' });
-                else handleKey({ key: 'ArrowLeft' });
-            } else {
-                if (dy > 0) handleKey({ key: 'ArrowDown' });
-                else handleKey({ key: 'ArrowUp' });
+        container.addEventListener('touchmove', (e) => {
+            const dx = e.touches[0].clientX - startTouch.x;
+            const dy = e.touches[0].clientY - startTouch.y;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                isSwipe = true;
             }
         });
 
-        window.addEventListener("keydown", handleKey);
+        container.addEventListener('touchend', (e) => {
+            if (isSwipe) {
+                const dx = e.changedTouches[0].clientX - startTouch.x;
+                const dy = e.changedTouches[0].clientY - startTouch.y;
+                handleSwipe(dx, dy);
+            }
+            isSwipe = false;
+        });
+
         init();
     </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2048 Game</title>
+    <title>Fusion Blocks</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -37,6 +37,7 @@
             border-radius: 5px;
             color: #776e65;
             box-sizing: border-box;
+            transition: all 0.3s ease-out; /* Add transition for smooth animations */
         }
         .tile.selected {
             outline: 3px solid #4caf50;
@@ -44,15 +45,16 @@
         }
         .tile[data-value="2"] { background: #eee4da; }
         .tile[data-value="4"] { background: #ede0c8; }
-        .tile[data-value="8"] { background: #f2b179; color: #f9f6f2; }
-        .tile[data-value="16"] { background: #f59563; color: #f9f6f2; }
-        .tile[data-value="32"] { background: #f67c5f; color: #f9f6f2; }
-        .tile[data-value="64"] { background: #f65e3b; color: #f9f6f2; }
-        .tile[data-value="128"] { background: #edcf72; color: #f9f6f2; }
-        .tile[data-value="256"] { background: #edcc61; color: #f9f6f2; }
-        .tile[data-value="512"] { background: #edc850; color: #f9f6f2; }
-        .tile[data-value="1024"] { background: #edc53f; color: #f9f6f2; }
-        .tile[data-value="2048"] { background: #edc22e; color: #f9f6f2; }
+        .tile[data-value="8"] { background: #79bff2; color: #f9f6f2; }
+        .tile[data-value="16"] { background: #6395f5; color: #f9f6f2; }
+        .tile[data-value="32"] { background: #5f7cf6; color: #f9f6f2; }
+        .tile[data-value="64"] { background: #3b5ef6; color: #f9f6f2; }
+        .tile[data-value="128"] { background: #72edcf; color: #f9f6f2; }
+        .tile[data-value="256"] { background: #61edcc; color: #f9f6f2; }
+        .tile[data-value="512"] { background: #50edc8; color: #f9f6f2; }
+        .tile[data-value="1024"] { background: #3fedc5; color: #f9f6f2; }
+        .tile[data-value="2048"] { background: #2eedc2; color: #f9f6f2; }
+        .tile[data-value="Bomb"] { background: red; color: white; font-size: 32px; }
         .hidden {
             opacity: 0;
         }
@@ -88,6 +90,10 @@
     <div class="cooldown-container">
         <div class="cooldown-bar" id="cooldown-bar"></div>
     </div>
+    <div>
+        <button onclick="selectRow()">Select Row</button>
+        <button onclick="selectColumn()">Select Column</button>
+    </div>
 
     <script>
         const SIZE = 4; // Grid size: 4x4
@@ -96,12 +102,10 @@
         let grid = [];
         let swapReady = false;
         let firstTile = null;
+        let selectedRow = null;
+        let selectedColumn = null;
         let swapInterval;
-        let swipingDisabled = false;
-
-        // Variables for swipe detection
-        let startTouch = { x: 0, y: 0 };
-        let isSwipe = false;
+        let progress = 0;
 
         function init() {
             grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -127,7 +131,8 @@
             }
             if (emptyTiles.length > 0) {
                 const { r, c } = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-                grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+                const value = Math.random() < 0.1 ? 'Bomb' : (Math.random() < 0.9 ? 2 : 4);
+                grid[r][c] = value;
             }
         }
 
@@ -140,52 +145,12 @@
                     tile.textContent = value || '';
                     tile.dataset.value = value;
                     tile.className = value ? "tile" : "tile hidden";
+                    if (value === 'Bomb') {
+                        tile.textContent = "💣";
+                    }
                 }
             }
             checkGameOver();
-        }
-
-        function slide(row) {
-            const arr = row.filter(val => val);
-            for (let i = 0; i < arr.length - 1; i++) {
-                if (arr[i] === arr[i + 1]) {
-                    arr[i] *= 2;
-                    arr[i + 1] = 0;
-                }
-            }
-            return arr.filter(val => val).concat(Array(SIZE - arr.filter(val => val).length).fill(0));
-        }
-
-        function slideLeft() {
-            for (let r = 0; r < SIZE; r++) {
-                grid[r] = slide(grid[r]);
-            }
-        }
-
-        function slideRight() {
-            for (let r = 0; r < SIZE; r++) {
-                grid[r] = slide(grid[r].reverse()).reverse();
-            }
-        }
-
-        function slideUp() {
-            for (let c = 0; c < SIZE; c++) {
-                const col = grid.map(row => row[c]);
-                const newCol = slide(col);
-                for (let r = 0; r < SIZE; r++) {
-                    grid[r][c] = newCol[r];
-                }
-            }
-        }
-
-        function slideDown() {
-            for (let c = 0; c < SIZE; c++) {
-                const col = grid.map(row => row[c]).reverse();
-                const newCol = slide(col).reverse();
-                for (let r = 0; r < SIZE; r++) {
-                    grid[r][c] = newCol[r];
-                }
-            }
         }
 
         function handleTileClick(index) {
@@ -203,12 +168,9 @@
                 swapTiles(firstTile, secondTile);
                 firstTile = null;
                 swapReady = false;
-                swipingDisabled = false; // Re-enable swiping
-                cooldownBar.classList.remove("ready");
-                updateGrid();
 
                 const selectedTile = container.querySelector(".selected");
-                if (selectedTile) selectedTile.classList.remove("selected"); // Remove green outline
+                if (selectedTile) selectedTile.classList.remove("selected");
 
                 startCooldown();
             }
@@ -218,75 +180,25 @@
             const temp = grid[tile1.r][tile1.c];
             grid[tile1.r][tile1.c] = grid[tile2.r][tile2.c];
             grid[tile2.r][tile2.c] = temp;
+            updateGrid();
         }
 
-        function startCooldown() {
-            let progress = 0;
-            cooldownBar.style.width = "0%";
-            clearInterval(swapInterval);
-
-            swapInterval = setInterval(() => {
-                progress += 1;
-                cooldownBar.style.width = `${(progress / 300) * 100}%`;
-
-                if (progress >= 300) {
-                    clearInterval(swapInterval);
-                    cooldownBar.style.width = "100%";
-                    cooldownBar.classList.add("ready");
-                    swapReady = true;
-                    swipingDisabled = true; // Disable swiping until cooldown restarts
-                }
-            }, 100);
-        }
-
-        function handleSwipe(dx, dy) {
-            if (!swipingDisabled) {
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    if (dx > 30) slideRight();
-                    else if (dx < -30) slideLeft();
-                } else {
-                    if (dy > 30) slideDown();
-                    else if (dy < -30) slideUp();
-                }
-                addRandomTile();
-                updateGrid();
+        function selectRow() {
+            selectedRow = prompt("Enter row (0-3):");
+            selectedRow = parseInt(selectedRow);
+            if (selectedRow >= 0 && selectedRow < SIZE) {
+                alert(`Row ${selectedRow} selected.`);
             }
         }
 
-        // Touch event listeners
-        container.addEventListener('touchstart', (e) => {
-            startTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            isSwipe = false;
-        });
-
-        container.addEventListener('touchmove', (e) => {
-            const dx = e.touches[0].clientX - startTouch.x;
-            const dy = e.touches[0].clientY - startTouch.y;
-            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                isSwipe = true;
+        function selectColumn() {
+            selectedColumn = prompt("Enter column (0-3):");
+            selectedColumn = parseInt(selectedColumn);
+            if (selectedColumn >= 0 && selectedColumn < SIZE) {
+                alert(`Column ${selectedColumn} selected.`);
             }
-        });
-
-        container.addEventListener('touchend', (e) => {
-            if (isSwipe) {
-                const dx = e.changedTouches[0].clientX - startTouch.x;
-                const dy = e.changedTouches[0].clientY - startTouch.y;
-                handleSwipe(dx, dy);
-            }
-            isSwipe = false;
-            checkGameOver();
-        });
-   function checkGameOver() {
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    if (grid[r][c] === 0) return;
-                    if (c < SIZE - 1 && grid[r][c] === grid[r][c + 1]) return;
-                    if (r < SIZE - 1 && grid[r][c] === grid[r + 1][c]) return;
-                }
-            }
-            alert("Game Over! Restarting...");
-            init(); // Clear the board
         }
+
         init();
     </script>
 </body>

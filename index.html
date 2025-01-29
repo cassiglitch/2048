@@ -37,27 +37,13 @@
             border-radius: 5px;
             color: #776e65;
             box-sizing: border-box;
-            transition: all 0.3s ease-out; /* Add transition for smooth animations */
+            transition: all 0.3s ease-out;
         }
         .tile.selected {
             outline: 3px solid #4caf50;
             outline-offset: -3px;
         }
-        .tile[data-value="2"] { background: #eee4da; }
-        .tile[data-value="4"] { background: #ede0c8; }
-        .tile[data-value="8"] { background: #79bff2; color: #f9f6f2; }
-        .tile[data-value="16"] { background: #6395f5; color: #f9f6f2; }
-        .tile[data-value="32"] { background: #5f7cf6; color: #f9f6f2; }
-        .tile[data-value="64"] { background: #3b5ef6; color: #f9f6f2; }
-        .tile[data-value="128"] { background: #72edcf; color: #f9f6f2; }
-        .tile[data-value="256"] { background: #61edcc; color: #f9f6f2; }
-        .tile[data-value="512"] { background: #50edc8; color: #f9f6f2; }
-        .tile[data-value="1024"] { background: #3fedc5; color: #f9f6f2; }
-        .tile[data-value="2048"] { background: #2eedc2; color: #f9f6f2; }
-        .tile[data-value="Bomb"] { background: red; color: white; font-size: 32px; }
-        .hidden {
-            opacity: 0;
-        }
+        .hidden { opacity: 0; }
         .cooldown-container {
             margin-top: 20px;
             width: 400px;
@@ -84,28 +70,28 @@
     </style>
 </head>
 <body>
-    <div class="game-container" id="game">
-        <!-- Tiles will be dynamically generated -->
-    </div>
+    <div class="game-container" id="game"></div>
     <div class="cooldown-container">
         <div class="cooldown-bar" id="cooldown-bar"></div>
     </div>
-    <div>
-        <button onclick="selectRow()">Select Row</button>
-        <button onclick="selectColumn()">Select Column</button>
-    </div>
+    <button onclick="selectRow()">Select Row</button>
+    <button onclick="selectColumn()">Select Column</button>
+    <button onclick="moveSelected('left')">Move Left</button>
+    <button onclick="moveSelected('right')">Move Right</button>
+    <button onclick="moveSelected('up')">Move Up</button>
+    <button onclick="moveSelected('down')">Move Down</button>
 
     <script>
-        const SIZE = 4; // Grid size: 4x4
+        const SIZE = 4;
         const container = document.getElementById("game");
         const cooldownBar = document.getElementById("cooldown-bar");
         let grid = [];
         let swapReady = false;
         let firstTile = null;
-        let selectedRow = null;
-        let selectedColumn = null;
         let swapInterval;
         let progress = 0;
+        let selectedRow = -1;
+        let selectedColumn = -1;
 
         function init() {
             grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -150,53 +136,88 @@
                     }
                 }
             }
-            checkGameOver();
-        }
-
-        function handleTileClick(index) {
-            if (!swapReady) return;
-
-            const r = Math.floor(index / SIZE);
-            const c = index % SIZE;
-
-            if (!firstTile) {
-                firstTile = { r, c };
-                const tile = container.children[index];
-                tile.classList.add("selected"); // Add green outline
-            } else {
-                const secondTile = { r, c };
-                swapTiles(firstTile, secondTile);
-                firstTile = null;
-                swapReady = false;
-
-                const selectedTile = container.querySelector(".selected");
-                if (selectedTile) selectedTile.classList.remove("selected");
-
-                startCooldown();
-            }
-        }
-
-        function swapTiles(tile1, tile2) {
-            const temp = grid[tile1.r][tile1.c];
-            grid[tile1.r][tile1.c] = grid[tile2.r][tile2.c];
-            grid[tile2.r][tile2.c] = temp;
-            updateGrid();
         }
 
         function selectRow() {
             selectedRow = prompt("Enter row (0-3):");
             selectedRow = parseInt(selectedRow);
-            if (selectedRow >= 0 && selectedRow < SIZE) {
-                alert(`Row ${selectedRow} selected.`);
-            }
+            selectedColumn = -1;
         }
 
         function selectColumn() {
             selectedColumn = prompt("Enter column (0-3):");
             selectedColumn = parseInt(selectedColumn);
-            if (selectedColumn >= 0 && selectedColumn < SIZE) {
-                alert(`Column ${selectedColumn} selected.`);
+            selectedRow = -1;
+        }
+
+        function moveSelected(direction) {
+            if (selectedRow !== -1) {
+                if (direction === "left") slideRowLeft(selectedRow);
+                else if (direction === "right") slideRowRight(selectedRow);
+            } else if (selectedColumn !== -1) {
+                if (direction === "up") slideColumnUp(selectedColumn);
+                else if (direction === "down") slideColumnDown(selectedColumn);
             }
+            updateGrid();
+        }
+
+        function slideRowLeft(row) {
+            let newRow = grid[row].filter(v => v);
+            mergeTiles(newRow);
+            while (newRow.length < SIZE) newRow.push(0);
+            grid[row] = newRow;
+        }
+
+        function slideRowRight(row) {
+            let newRow = grid[row].filter(v => v);
+            newRow.reverse();
+            mergeTiles(newRow);
+            while (newRow.length < SIZE) newRow.push(0);
+            newRow.reverse();
+            grid[row] = newRow;
+        }
+
+        function slideColumnUp(col) {
+            let newCol = grid.map(row => row[col]).filter(v => v);
+            mergeTiles(newCol);
+            while (newCol.length < SIZE) newCol.push(0);
+            for (let r = 0; r < SIZE; r++) grid[r][col] = newCol[r];
+        }
+
+        function slideColumnDown(col) {
+            let newCol = grid.map(row => row[col]).filter(v => v);
+            newCol.reverse();
+            mergeTiles(newCol);
+            while (newCol.length < SIZE) newCol.push(0);
+            newCol.reverse();
+            for (let r = 0; r < SIZE; r++) grid[r][col] = newCol[r];
+        }
+
+        function mergeTiles(arr) {
+            for (let i = 0; i < arr.length - 1; i++) {
+                if (arr[i] === arr[i + 1]) {
+                    arr[i] *= 2;
+                    arr[i + 1] = 0;
+                }
+            }
+            return arr.filter(v => v);
+        }
+
+        function startCooldown() {
+            progress = 0;
+            cooldownBar.style.width = "0%";
+            clearInterval(swapInterval);
+
+            swapInterval = setInterval(() => {
+                progress += 1;
+                cooldownBar.style.width = `${(progress / 300) * 100}%`;
+
+                if (progress >= 300) {
+                    clearInterval(swapInterval);
+                    cooldownBar.style.width = "100%";
+                    cooldownBar.classList.add("ready");
+                }
+            }, 10);
         }
 
         init();

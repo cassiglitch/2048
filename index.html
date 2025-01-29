@@ -43,7 +43,21 @@
             outline: 3px solid #4caf50;
             outline-offset: -3px;
         }
-        .hidden { opacity: 0; }
+        .tile[data-value="2"] { background: #eee4da; }
+        .tile[data-value="4"] { background: #ede0c8; }
+        .tile[data-value="8"] { background: #79bff2; color: #f9f6f2; }
+        .tile[data-value="16"] { background: #6395f5; color: #f9f6f2; }
+        .tile[data-value="32"] { background: #5f7cf6; color: #f9f6f2; }
+        .tile[data-value="64"] { background: #3b5ef6; color: #f9f6f2; }
+        .tile[data-value="128"] { background: #72edcf; color: #f9f6f2; }
+        .tile[data-value="256"] { background: #61edcc; color: #f9f6f2; }
+        .tile[data-value="512"] { background: #50edc8; color: #f9f6f2; }
+        .tile[data-value="1024"] { background: #3fedc5; color: #f9f6f2; }
+        .tile[data-value="2048"] { background: #2eedc2; color: #f9f6f2; }
+        .tile[data-value="Bomb"] { background: red; color: white; font-size: 32px; }
+        .hidden {
+            opacity: 0;
+        }
         .cooldown-container {
             margin-top: 20px;
             width: 400px;
@@ -74,12 +88,7 @@
     <div class="cooldown-container">
         <div class="cooldown-bar" id="cooldown-bar"></div>
     </div>
-    <button onclick="selectRow()">Select Row</button>
-    <button onclick="selectColumn()">Select Column</button>
-    <button onclick="moveSelected('left')">Move Left</button>
-    <button onclick="moveSelected('right')">Move Right</button>
-    <button onclick="moveSelected('up')">Move Up</button>
-    <button onclick="moveSelected('down')">Move Down</button>
+    <button id="selectButton" onclick="toggleSelectionMode()">Choose Column/Row</button>
 
     <script>
         const SIZE = 4;
@@ -87,11 +96,13 @@
         const cooldownBar = document.getElementById("cooldown-bar");
         let grid = [];
         let swapReady = false;
-        let firstTile = null;
-        let swapInterval;
+        let selectionMode = false;
+        let selectedTiles = [];
+        let isRowSelection = false;
         let progress = 0;
-        let selectedRow = -1;
-        let selectedColumn = -1;
+
+        let startTouch = { x: 0, y: 0 };
+        let isSwipe = false;
 
         function init() {
             grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
@@ -106,118 +117,174 @@
             addRandomTile();
             updateGrid();
             startCooldown();
+            addSwipeListeners();
         }
 
         function addRandomTile() {
             const emptyTiles = [];
             for (let r = 0; r < SIZE; r++) {
                 for (let c = 0; c < SIZE; c++) {
-                    if (grid[r][c] === 0) emptyTiles.push({ r, c });
+                    if (grid[r][c] === 0) emptyTiles.push([r, c]);
                 }
             }
-            if (emptyTiles.length > 0) {
-                const { r, c } = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-                const value = Math.random() < 0.1 ? 'Bomb' : (Math.random() < 0.9 ? 2 : 4);
-                grid[r][c] = value;
+            if (emptyTiles.length) {
+                const [r, c] = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+                grid[r][c] = Math.random() < 0.9 ? 2 : 4;
             }
         }
 
         function updateGrid() {
-            const tiles = container.children;
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    const tile = tiles[r * SIZE + c];
-                    const value = grid[r][c];
-                    tile.textContent = value || '';
-                    tile.dataset.value = value;
-                    tile.className = value ? "tile" : "tile hidden";
-                    if (value === 'Bomb') {
-                        tile.textContent = "💣";
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => tile.classList.add('hidden')); // Hide all initially
+
+            grid.forEach((row, rIdx) => {
+                row.forEach((value, cIdx) => {
+                    const tile = tiles[rIdx * SIZE + cIdx];
+                    if (value !== 0) {
+                        tile.textContent = value;
+                        tile.classList.remove('hidden');
+                        tile.setAttribute('data-value', value);
+                    }
+                });
+            });
+        }
+
+        function toggleSelectionMode() {
+            if (selectionMode) {
+                selectedTiles = [];
+                drawGrid();
+            }
+            selectionMode = !selectionMode;
+            document.getElementById('selectButton').textContent = selectionMode ? "Selecting..." : "Choose Column/Row";
+        }
+
+        function handleTileClick(i) {
+            const row = Math.floor(i / SIZE);
+            const col = i % SIZE;
+
+            if (selectionMode) {
+                if (selectedTiles.length === 0) {
+                    selectedTiles.push(`${row}-${col}`);
+                    drawGrid();
+                } else if (selectedTiles.length === 1) {
+                    const [firstRow, firstCol] = selectedTiles[0].split('-').map(Number);
+                    if (row === firstRow) {
+                        for (let i = 0; i < SIZE; i++) {
+                            selectedTiles.push(`${row}-${i}`);
+                        }
+                        isRowSelection = true;
+                    } else if (col === firstCol) {
+                        for (let i = 0; i < SIZE; i++) {
+                            selectedTiles.push(`${i}-${col}`);
+                        }
+                        isRowSelection = false;
+                    }
+                    drawGrid();
+                    selectionMode = false;
+                    document.getElementById('selectButton').textContent = "Choose Column/Row";
+                }
+            }
+        }
+
+        function drawGrid() {
+            const tiles = document.querySelectorAll('.tile');
+            tiles.forEach(tile => tile.classList.add('hidden')); // Hide all initially
+
+            grid.forEach((row, rIdx) => {
+                row.forEach((value, cIdx) => {
+                    const tile = tiles[rIdx * SIZE + cIdx];
+                    if (value !== 0) {
+                        tile.textContent = value;
+                        tile.classList.remove('hidden');
+                        tile.setAttribute('data-value', value);
+                    }
+                });
+            });
+        }
+
+        function slideAndCombine(line) {
+            let result = line.filter(val => val);
+            for (let i = 0; i < result.length - 1; i++) {
+                if (result[i] === result[i + 1]) {
+                    result[i] *= 2;
+                    result[i + 1] = 0;
+                }
+            }
+            result = result.filter(val => val);
+            while (result.length < SIZE) result.push(0);
+            return result;
+        }
+
+        function move(direction) {
+            if (selectionMode || !selectedTiles.length) return; // Disable movement during selection
+            let moved = false;
+
+            if (isRowSelection) {
+                const row = parseInt(selectedTiles[0].split('-')[0]);
+                if (direction === 'left' || direction === 'right') {
+                    let selectedRow = grid[row];
+                    if (direction === 'right') selectedRow.reverse();
+                    const newRow = slideAndCombine(selectedRow);
+                    if (direction === 'right') newRow.reverse();
+                    if (grid[row].toString() !== newRow.toString()) {
+                        grid[row] = newRow;
+                        moved = true;
+                    }
+                }
+            } else {
+                const col = parseInt(selectedTiles[0].split('-')[1]);
+                if (direction === 'up' || direction === 'down') {
+                    let selectedCol = grid.map(row => row[col]);
+                    if (direction === 'down') selectedCol.reverse();
+                    const newCol = slideAndCombine(selectedCol);
+                    if (direction === 'down') newCol.reverse();
+                    if (grid.map(row => row[col]).toString() !== newCol.toString()) {
+                        for (let i = 0; i < SIZE; i++) {
+                            grid[i][col] = newCol[i];
+                        }
+                        moved = true;
                     }
                 }
             }
-        }
-
-        function selectRow() {
-            selectedRow = prompt("Enter row (0-3):");
-            selectedRow = parseInt(selectedRow);
-            selectedColumn = -1;
-        }
-
-        function selectColumn() {
-            selectedColumn = prompt("Enter column (0-3):");
-            selectedColumn = parseInt(selectedColumn);
-            selectedRow = -1;
-        }
-
-        function moveSelected(direction) {
-            if (selectedRow !== -1) {
-                if (direction === "left") slideRowLeft(selectedRow);
-                else if (direction === "right") slideRowRight(selectedRow);
-            } else if (selectedColumn !== -1) {
-                if (direction === "up") slideColumnUp(selectedColumn);
-                else if (direction === "down") slideColumnDown(selectedColumn);
+            if (moved) {
+                addRandomTile();
+                updateGrid();
             }
-            updateGrid();
-        }
-
-        function slideRowLeft(row) {
-            let newRow = grid[row].filter(v => v);
-            mergeTiles(newRow);
-            while (newRow.length < SIZE) newRow.push(0);
-            grid[row] = newRow;
-        }
-
-        function slideRowRight(row) {
-            let newRow = grid[row].filter(v => v);
-            newRow.reverse();
-            mergeTiles(newRow);
-            while (newRow.length < SIZE) newRow.push(0);
-            newRow.reverse();
-            grid[row] = newRow;
-        }
-
-        function slideColumnUp(col) {
-            let newCol = grid.map(row => row[col]).filter(v => v);
-            mergeTiles(newCol);
-            while (newCol.length < SIZE) newCol.push(0);
-            for (let r = 0; r < SIZE; r++) grid[r][col] = newCol[r];
-        }
-
-        function slideColumnDown(col) {
-            let newCol = grid.map(row => row[col]).filter(v => v);
-            newCol.reverse();
-            mergeTiles(newCol);
-            while (newCol.length < SIZE) newCol.push(0);
-            newCol.reverse();
-            for (let r = 0; r < SIZE; r++) grid[r][col] = newCol[r];
-        }
-
-        function mergeTiles(arr) {
-            for (let i = 0; i < arr.length - 1; i++) {
-                if (arr[i] === arr[i + 1]) {
-                    arr[i] *= 2;
-                    arr[i + 1] = 0;
-                }
-            }
-            return arr.filter(v => v);
         }
 
         function startCooldown() {
             progress = 0;
-            cooldownBar.style.width = "0%";
-            clearInterval(swapInterval);
-
-            swapInterval = setInterval(() => {
-                progress += 1;
-                cooldownBar.style.width = `${(progress / 300) * 100}%`;
-
-                if (progress >= 300) {
-                    clearInterval(swapInterval);
-                    cooldownBar.style.width = "100%";
-                    cooldownBar.classList.add("ready");
+            setInterval(() => {
+                if (progress < 100) {
+                    progress += 1;
+                    cooldownBar.style.width = `${progress}%`;
+                } else if (!swapReady) {
+                    swapReady = true;
+                    cooldownBar.classList.add('ready');
                 }
-            }, 10);
+            }, 100);
+        }
+
+        function addSwipeListeners() {
+            container.addEventListener('touchstart', (e) => {
+                startTouch.x = e.touches[0].clientX;
+                startTouch.y = e.touches[0].clientY;
+                isSwipe = false;
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                const deltaX = e.touches[0].clientX - startTouch.x;
+                const deltaY = e.touches[0].clientY - startTouch.y;
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                    isSwipe = true;
+                    if (deltaX > 0) move('right');
+                    else move('left');
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
+                    isSwipe = true;
+                    if (deltaY > 0) move('down');
+                    else move('up');
+                }
+            });
         }
 
         init();

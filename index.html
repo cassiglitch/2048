@@ -8,286 +8,490 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             margin: 0;
-            background: #faf8ef;
         }
+
         .game-container {
-            background: #bbada0;
-            padding: 15px;
-            border-radius: 10px;
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-gap: 15px;
-            width: 400px;
-            height: 400px;
-            touch-action: none;
-            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
-        .tile {
-            background: #cdc1b4;
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 100px);
+            grid-gap: 5px;
+            margin-bottom: 20px;
+        }
+
+.tile {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+    background-color: #c78b21;
+    border-radius: 10px;
+    transition: transform 0.5s, opacity 0.5s, background-color 0.5s; /* Added transition */
+}
+
+
+        .tile-2 { background-color: #79bff2; }
+        .tile-4 { background-color: #6395f5; }
+        .tile-8 { background-color: #5f7cf6; }
+        .tile-16 { background-color: #3b5ef6; }
+        .tile-32 { background-color: #72edcf; }
+        .tile-64 { background-color: #61edcc; }
+        .tile-128 { background-color: #50edc8; }
+        .tile-256 { background-color: #3fedc5; }
+        .tile-512 { background-color: #2eedc2; }
+        .tile-1024 { background-color: #52c27f; }
+        .tile-2048 { background-color: #ed6e29; }
+        .tile-bomb {
+    background-color: red;
+    color: white;
+}
+
+
+        .selected {
+            outline: 5px solid blue;
+        }
+        .selected-swap {
+            outline: 5px solid green;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .controls {
             display: flex;
             justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            font-weight: bold;
-            border-radius: 5px;
-            color: #776e65;
-            box-sizing: border-box;
-            transition: all 0.3s ease-out;
-        }
-        .tile.selected {
-            outline: 3px solid #4caf50;
-            outline-offset: -3px;
-        }
-        .tile[data-value="2"] { background: #eee4da; }
-        .tile[data-value="4"] { background: #ede0c8; }
-        .tile[data-value="8"] { background: #79bff2; color: #f9f6f2; }
-        .tile[data-value="16"] { background: #6395f5; color: #f9f6f2; }
-        .tile[data-value="32"] { background: #5f7cf6; color: #f9f6f2; }
-        .tile[data-value="64"] { background: #3b5ef6; color: #f9f6f2; }
-        .tile[data-value="128"] { background: #72edcf; color: #f9f6f2; }
-        .tile[data-value="256"] { background: #61edcc; color: #f9f6f2; }
-        .tile[data-value="512"] { background: #50edc8; color: #f9f6f2; }
-        .tile[data-value="1024"] { background: #3fedc5; color: #f9f6f2; }
-        .tile[data-value="2048"] { background: #2eedc2; color: #f9f6f2; }
-        .tile[data-value="Bomb"] { background: red; color: white; font-size: 32px; }
-        .hidden {
-            opacity: 0;
-        }
-        .cooldown-container {
             margin-top: 20px;
-            width: 400px;
-            height: 20px;
-            background: #ccc;
-            border-radius: 10px;
-            overflow: hidden;
-            position: relative;
         }
+
+        .cooldown-bar-container {
+            width: 100px;
+            height: 10px;
+            background-color: #ccc;
+            margin-bottom: 10px;
+        }
+
         .cooldown-bar {
             height: 100%;
-            background: #76c7c0;
-            width: 0%;
-            transition: width 0.5s linear;
+            width: 0;
+            background-color: #FFFF00;
         }
-        .ready {
-            background: #76c7c0;
-            animation: flash 0.5s infinite alternate;
-        }
-        @keyframes flash {
-            0% { background-color: #76c7c0; }
-            100% { background-color: #4caf50; }
-        }
+
+.locked {
+    /* No pointer-events restriction */
+    /* No opacity change */
+}
+
+.red-outline {
+    outline: 5px solid red;
+    transition: outline 0.5s;
+    z-index:999
+}
+
     </style>
 </head>
 <body>
-    <div class="game-container" id="game"></div>
-    <div class="cooldown-container">
-        <div class="cooldown-bar" id="cooldown-bar"></div>
+    <div class="game-container">
+        <div class="cooldown-bar-container">
+            <div class="cooldown-bar" id="cooldownBar"></div>
+        </div>
+        <div class="grid" id="gameBoard"></div>
+        <div class="controls">
+            <button onclick="selectRow(0)">Row 1</button>
+            <button onclick="selectRow(1)">Row 2</button>
+            <button onclick="selectRow(2)">Row 3</button>
+            <button onclick="selectRow(3)">Row 4</button>
+            <button onclick="selectCol(0)">Col 1</button>
+            <button onclick="selectCol(1)">Col 2</button>
+            <button onclick="selectCol(2)">Col 3</button>
+            <button onclick="selectCol(3)">Col 4</button>
+        </div>
     </div>
-    <button id="selectButton" onclick="toggleSelectionMode()">Choose Column/Row</button>
 
     <script>
-        const SIZE = 4;
-        const container = document.getElementById("game");
-        const cooldownBar = document.getElementById("cooldown-bar");
+        const boardSize = 4;
         let grid = [];
-        let swapReady = false;
-        let selectionMode = false;
-        let selectedTiles = [];
-        let isRowSelection = false;
-        let progress = 0;
+        let selectedRow = null;
+        let selectedCol = null;
+        const gameBoard = document.getElementById('gameBoard');
+        let cooldown = 0;
+        let cooldownInterval;
+        let locked = false;
+        let selectedTile = null;
+        let SwapHappened = false
 
-        let startTouch = { x: 0, y: 0 };
-        let isSwipe = false;
-
-        function init() {
-            grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
-            container.innerHTML = '';
-            for (let i = 0; i < SIZE * SIZE; i++) {
-                const tile = document.createElement("div");
-                tile.className = "tile hidden";
-                tile.addEventListener("click", () => handleTileClick(i));
-                container.appendChild(tile);
-            }
+        // Initialize the board
+        function createBoard() {
+            grid = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
             addRandomTile();
             addRandomTile();
-            updateGrid();
-            startCooldown();
-            addSwipeListeners();
+            updateBoard();
         }
 
-        function addRandomTile() {
-            const emptyTiles = [];
-            for (let r = 0; r < SIZE; r++) {
-                for (let c = 0; c < SIZE; c++) {
-                    if (grid[r][c] === 0) emptyTiles.push([r, c]);
+// Function to update the board and re-render tiles
+function updateBoard() {
+    gameBoard.innerHTML = '';
+    grid.forEach((row, rowIndex) => {
+        row.forEach((tile, colIndex) => {
+            const tileElement = document.createElement('div');
+            tileElement.classList.add('tile');
+            tileElement.setAttribute("data-row", rowIndex);
+            tileElement.setAttribute("data-col", colIndex);
+
+            if (tile) {
+                tileElement.textContent = tile;
+                if (tile === "B") { 
+                tileElement.classList.add('red-outline'); // Use red outline class for smoother transition
+        
+                    tileElement.classList.add('tile-bomb');
+                } else {
+                    tileElement.classList.add(`tile-${tile}`);
                 }
             }
-            if (emptyTiles.length) {
-                const [r, c] = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-                grid[r][c] = Math.random() < 0.9 ? 2 : 4;
+
+            if (selectedRow !== null && rowIndex === selectedRow) {
+                tileElement.classList.add('selected');
+            }
+            if (selectedCol !== null && colIndex === selectedCol) {
+                tileElement.classList.add('selected');
+            }
+            if (locked) {
+                tileElement.classList.add('locked');
+            }
+            if (selectedTile && selectedTile.row === rowIndex && selectedTile.col === colIndex) {
+                tileElement.classList.add('selected-swap');
+            }
+
+            tileElement.addEventListener('click', () => handleTileClick(rowIndex, colIndex));
+            gameBoard.appendChild(tileElement);
+        });
+    });
+
+    if (locked) {
+        selectedRow = null;
+        selectedCol = null;
+    }
+}
+function handleTileClick(rowIndex, colIndex) {
+    if (!locked) return; // Only allow swapping when locked
+
+    if (!selectedTile) {
+        // First click: Select tile
+        selectedTile = { row: rowIndex, col: colIndex };
+    } else if (selectedTile.row === rowIndex && selectedTile.col === colIndex) {
+        // Deselect the tile if the same tile is clicked again
+        selectedTile = null;
+    } else {
+        // Second click: Swap or merge
+        let tile1 = grid[rowIndex][colIndex];
+        let tile2 = grid[selectedTile.row][selectedTile.col];
+
+        let mergeRow = rowIndex;
+        let mergeCol = colIndex;
+
+        if (tile1 === "B" || tile2 === "B") {
+            // Bomb merges with anything, deleting both
+            grid[rowIndex][colIndex] = null;
+            grid[selectedTile.row][selectedTile.col] = null;
+        } else {
+            // Swap tiles normally
+            [grid[rowIndex][colIndex], grid[selectedTile.row][selectedTile.col]] = [tile2, tile1];
+            swapHappened = true;
+        }
+
+        // Temporarily add red-outline to merge location
+        let mergedTile = document.querySelector(`[data-row='${mergeRow}'][data-col='${mergeCol}']`);
+        if (mergedTile) {
+            mergedTile.classList.add("red-outline");
+            setTimeout(() => {
+                mergedTile.classList.remove("red-outline");
+            }, 2000);
+        }
+
+        selectedTile = null;
+        if (swapHappened) resetCooldown();
+        updateBoard();
+    }
+}
+
+
+
+        // Add a random tile (2 or 4)
+function addRandomTile() {
+    const emptyTiles = [];
+    for (let row = 0; row < boardSize; row++) {
+        for (let col = 0; col < boardSize; col++) {
+            if (grid[row][col] === null) {
+                emptyTiles.push({ row, col });
             }
         }
+    }
 
-        function updateGrid() {
-            const tiles = document.querySelectorAll('.tile');
-            tiles.forEach(tile => tile.classList.add('hidden')); // Hide all initially
-
-            grid.forEach((row, rIdx) => {
-                row.forEach((value, cIdx) => {
-                    const tile = tiles[rIdx * SIZE + cIdx];
-                    if (value !== 0) {
-                        tile.textContent = value;
-                        tile.classList.remove('hidden');
-                        tile.setAttribute('data-value', value);
-                    }
-                });
-            });
+    if (emptyTiles.length > 0) {
+        const randomTile = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
+        let randomValue;
+        if (Math.random() < 0.1) { // 10% chance to spawn a bomb
+            randomValue = "B"; 
+        } else {
+            randomValue = Math.random() < 0.9 ? 2 : 4;
         }
+        grid[randomTile.row][randomTile.col] = randomValue;
+        updateBoard();
+    }
+}
 
-        function toggleSelectionMode() {
-            if (selectionMode) {
-                selectedTiles = [];
-                drawGrid();
-            }
-            selectionMode = !selectionMode;
-            document.getElementById('selectButton').textContent = selectionMode ? "Selecting..." : "Choose Column/Row";
-        }
-
-        function handleTileClick(i) {
-            const row = Math.floor(i / SIZE);
-            const col = i % SIZE;
-
-            if (selectionMode) {
-                if (selectedTiles.length === 0) {
-                    selectedTiles.push(`${row}-${col}`);
-                    drawGrid();
-                } else if (selectedTiles.length === 1) {
-                    const [firstRow, firstCol] = selectedTiles[0].split('-').map(Number);
-                    if (row === firstRow) {
-                        for (let i = 0; i < SIZE; i++) {
-                            selectedTiles.push(`${row}-${i}`);
-                        }
-                        isRowSelection = true;
-                    } else if (col === firstCol) {
-                        for (let i = 0; i < SIZE; i++) {
-                            selectedTiles.push(`${i}-${col}`);
-                        }
-                        isRowSelection = false;
-                    }
-                    drawGrid();
-                    selectionMode = false;
-                    document.getElementById('selectButton').textContent = "Choose Column/Row";
-                }
-            }
-        }
-
-        function drawGrid() {
-            const tiles = document.querySelectorAll('.tile');
-            tiles.forEach(tile => tile.classList.add('hidden')); // Hide all initially
-
-            grid.forEach((row, rIdx) => {
-                row.forEach((value, cIdx) => {
-                    const tile = tiles[rIdx * SIZE + cIdx];
-                    if (value !== 0) {
-                        tile.textContent = value;
-                        tile.classList.remove('hidden');
-                        tile.setAttribute('data-value', value);
-                    }
-                });
-            });
-        }
-
-        function slideAndCombine(line) {
-            let result = line.filter(val => val);
-            for (let i = 0; i < result.length - 1; i++) {
-                if (result[i] === result[i + 1]) {
-                    result[i] *= 2;
-                    result[i + 1] = 0;
-                }
-            }
-            result = result.filter(val => val);
-            while (result.length < SIZE) result.push(0);
-            return result;
-        }
-
-        function move(direction) {
-            if (selectionMode || !selectedTiles.length) return; // Disable movement during selection
-            let moved = false;
-
-            if (isRowSelection) {
-                const row = parseInt(selectedTiles[0].split('-')[0]);
-                if (direction === 'left' || direction === 'right') {
-                    let selectedRow = grid[row];
-                    if (direction === 'right') selectedRow.reverse();
-                    const newRow = slideAndCombine(selectedRow);
-                    if (direction === 'right') newRow.reverse();
-                    if (grid[row].toString() !== newRow.toString()) {
-                        grid[row] = newRow;
-                        moved = true;
-                    }
-                }
-            } else {
-                const col = parseInt(selectedTiles[0].split('-')[1]);
-                if (direction === 'up' || direction === 'down') {
-                    let selectedCol = grid.map(row => row[col]);
-                    if (direction === 'down') selectedCol.reverse();
-                    const newCol = slideAndCombine(selectedCol);
-                    if (direction === 'down') newCol.reverse();
-                    if (grid.map(row => row[col]).toString() !== newCol.toString()) {
-                        for (let i = 0; i < SIZE; i++) {
-                            grid[i][col] = newCol[i];
-                        }
-                        moved = true;
-                    }
-                }
-            }
-            if (moved) {
-                addRandomTile();
-                updateGrid();
-            }
-        }
 
         function startCooldown() {
-            progress = 0;
-            setInterval(() => {
-                if (progress < 100) {
-                    progress += 1;
-                    cooldownBar.style.width = `${progress}%`;
-                } else if (!swapReady) {
-                    swapReady = true;
-                    cooldownBar.classList.add('ready');
-                }
-            }, 100);
+    cooldownInterval = setInterval(() => {
+        if (cooldown < 30) { 
+            cooldown++;
+            const cooldownBar = document.getElementById('cooldownBar');
+            cooldownBar.style.width = `${Math.min((cooldown / 30) * 100, 100)}%`; // Ensures max width is 100%
+        }
+        if (cooldown === 30) {
+            locked = true;
+            selectedCol = null;
+            selectedRow = null;
+            updateBoard()
+            clearInterval(cooldownInterval); // Stops interval at max cooldown
+        }
+    }, 1000);
+}
+
+
+        // Reset cooldown timer
+        function resetCooldown() {
+            clearInterval(cooldownInterval);
+            cooldown = 0;
+            locked = false;
+            selectedTile = null;
+            const cooldownBar = document.getElementById('cooldownBar');
+            cooldownBar.style.width = '0';
+            startCooldown();
         }
 
-        function addSwipeListeners() {
-            container.addEventListener('touchstart', (e) => {
-                startTouch.x = e.touches[0].clientX;
-                startTouch.y = e.touches[0].clientY;
-                isSwipe = false;
-            });
 
-            container.addEventListener('touchmove', (e) => {
-                const deltaX = e.touches[0].clientX - startTouch.x;
-                const deltaY = e.touches[0].clientY - startTouch.y;
-                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
-                    isSwipe = true;
-                    if (deltaX > 0) move('right');
-                    else move('left');
-                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 50) {
-                    isSwipe = true;
-                    if (deltaY > 0) move('down');
-                    else move('up');
-                }
-            });
+        function mergeTiles(aRow, aCol, bRow, bCol) {
+            if (grid[aRow][aCol] === "B" || grid[bRow][bCol] === "B") {
+                grid[aRow][aCol] = null;
+                grid[bRow][bCol] = null;
+            } else if (grid[aRow][aCol] === grid[bRow][bCol]) {
+                grid[aRow][aCol] *= 2;
+                grid[bRow][bCol] = null;
+            }
+            updateBoard();
         }
 
-        init();
+        function highlightMerge(row, col) {
+            setTimeout(() => {
+                const tileElement = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+                if (tileElement) {
+                    tileElement.classList.add('red-outline');
+                    setTimeout(() => tileElement.classList.remove('red-outline'), 2000);
+                }
+            }, 50);
+        }
+
+function moveRow(rowIndex, direction) {
+    let row = grid[rowIndex].map((tile, i) => ({ value: tile, originalIndex: i })).filter(tile => tile.value !== null);
+    if (direction === 'right') row.reverse();
+
+    for (let i = 0; i < row.length - 1; i++) {
+        if (row[i].value === "B" && row[i + 1].value !== "B") {
+            // Bomb merges with another tile (delete other tile)
+            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - i : i + 1);
+            row.splice(i + 1, 1);
+        } else if (row[i].value !== "B" && row[i + 1].value === "B") {
+            // Another tile merges with a bomb (delete other tile)
+            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - (i + 1) : i);
+            row[i].value = "B";
+            row.splice(i + 1, 1);
+        } else if (row[i].value === row[i + 1].value) {
+            // Normal merge (no highlight)
+            row[i].value *= 2;
+            row.splice(i + 1, 1);
+        }
+    }
+
+    while (row.length < boardSize) row.push({ value: null, originalIndex: -1 });
+    if (direction === 'right') row.reverse();
+
+    grid[rowIndex] = row.map(tile => tile.value);
+    updateBoard();
+    addRandomTile();
+}
+
+function moveColumn(colIndex, direction) {
+    let column = [];
+    for (let i = 0; i < boardSize; i++) {
+        if (grid[i][colIndex] !== null) column.push({ value: grid[i][colIndex], originalIndex: i });
+    }
+    if (direction === 'down') column.reverse();
+
+    for (let i = 0; i < column.length - 1; i++) {
+        if (column[i].value === "B" && column[i + 1].value !== "B") {
+            // Bomb merges with another tile (delete other tile)
+       column[i].value = null;
+            highlightMerge(direction === 'down' ? boardSize - 1 - i : i + 1, colIndex);
+            column.splice(i + 1, 1);
+        } else if (column[i].value !== "B" && column[i + 1].value === "B") {
+            // Another tile merges with a bomb (delete other tile)
+            highlightMerge(direction === 'down' ? boardSize - 1 - (i + 1) : i, colIndex);
+            column[i].value = null;
+            column.splice(i + 1, 1);
+        } else if (column[i].value === column[i + 1].value) {
+            // Normal merge (no highlight)
+            column[i].value *= 2;
+            column.splice(i + 1, 1);
+        }
+    }
+
+    while (column.length < boardSize) column.push({ value: null, originalIndex: -1 });
+    if (direction === 'down') column.reverse();
+
+    for (let i = 0; i < boardSize; i++) {
+        grid[i][colIndex] = column[i].value;
+    }
+    updateBoard();
+    addRandomTile();
+}
+function moveRow(rowIndex, direction) {
+    let row = grid[rowIndex].map((tile, i) => ({ value: tile, originalIndex: i })).filter(tile => tile.value !== null);
+    if (direction === 'right') row.reverse();
+
+    for (let i = 0; i < row.length - 1; i++) {
+        if (row[i].value === "B" && row[i + 1].value !== "B") {
+            // Bomb merges with another tile (delete other tile)
+            row[i].value = null;
+      
+            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - i : i + 1);
+            row.splice(i + 1, 1);
+        } else if (row[i].value !== "B" && row[i + 1].value === "B") {
+            // Another tile merges with a bomb (delete other tile)
+            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - (i + 1) : i);
+            row[i].value = null;
+            row.splice(i + 1, 1);
+        } else if (row[i].value === row[i + 1].value) {
+            // Normal merge (no highlight)
+            row[i].value *= 2;
+            row.splice(i + 1, 1);
+        }
+    }
+
+    while (row.length < boardSize) row.push({ value: null, originalIndex: -1 });
+    if (direction === 'right') row.reverse();
+
+    grid[rowIndex] = row.map(tile => tile.value);
+    updateBoard();
+    addRandomTile();
+}
+
+function moveColumn(colIndex, direction) {
+    let column = [];
+    for (let i = 0; i < boardSize; i++) {
+        if (grid[i][colIndex] !== null) column.push({ value: grid[i][colIndex], originalIndex: i });
+    }
+    if (direction === 'down') column.reverse();
+
+    for (let i = 0; i < column.length - 1; i++) {
+        if (column[i].value === "B" && column[i + 1].value !== "B") {
+            // Bomb merges with another tile (delete other tile)
+            highlightMerge(direction === 'down' ? boardSize - 1 - i : i + 1, colIndex);
+            column.splice(i + 1, 1);
+        } else if (column[i].value !== "B" && column[i + 1].value === "B") {
+            // Another tile merges with a bomb (delete other tile)
+            highlightMerge(direction === 'down' ? boardSize - 1 - (i + 1) : i, colIndex);
+            column[i].value = "B";
+            column.splice(i + 1, 1);
+        } else if (column[i].value === column[i + 1].value) {
+            // Normal merge (no highlight)
+            column[i].value *= 2;
+            column.splice(i + 1, 1);
+        }
+    }
+
+    while (column.length < boardSize) column.push({ value: null, originalIndex: -1 });
+    if (direction === 'down') column.reverse();
+
+    for (let i = 0; i < boardSize; i++) {
+        grid[i][colIndex] = column[i].value;
+    }
+    updateBoard();
+    addRandomTile();
+}
+
+function selectRow(row) {
+    if (!locked) { // Prevents selection when locked
+        selectedRow = row;
+        selectedCol = null;
+    }
+    updateBoard();
+}
+
+function selectCol(col) {
+    if (!locked) { // Prevents selection when locked
+        selectedCol = col;
+        selectedRow = null;
+    }
+    updateBoard();
+}
+
+
+// Initialize game
+createBoard();
+startCooldown();
+
+        // Add touch swipe controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        gameBoard.addEventListener('touchstart', (event) => {
+            const touch = event.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        });
+
+        gameBoard.addEventListener('touchend', (event) => {
+            const touch = event.changedTouches[0];
+            const touchEndX = touch.clientX;
+            const touchEndY = touch.clientY;
+
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                // Horizontal swipe
+                if (diffX > 0 && selectedRow !== null) {
+                    moveRow(selectedRow, 'right');
+                } else if (diffX < 0 && selectedRow !== null) {
+                    moveRow(selectedRow, 'left');
+                }
+            } else {
+                // Vertical swipe
+                if (diffY > 0 && selectedCol !== null) {
+                    moveColumn(selectedCol, 'down');
+                } else if (diffY < 0 && selectedCol !== null) {
+                    moveColumn(selectedCol, 'up');
+                }
+            }
+        });
+
+        // Initialize game
+        createBoard();
+        startCooldown();
     </script>
 </body>
 </html>

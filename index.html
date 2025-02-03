@@ -1,497 +1,594 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fusion Blocks</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-        }
-
-        .game-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(4, 100px);
-            grid-gap: 5px;
-            margin-bottom: 20px;
-        }
-
-.tile {
-    width: 100px;
-    height: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    font-weight: bold;
-    background-color: #c78b21;
-    border-radius: 10px;
-    transition: transform 0.5s, opacity 0.5s, background-color 0.5s; /* Added transition */
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fusion Blocks</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      /* Center the entire game area */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    /* Main container: Next Tile + Fusion bar on left, game board on right */
+    .game-area {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+    /* Next Tile Preview */
+    #nextTileContainer {
+      text-align: center;
+    }
+    #nextTileDisplay {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      border-radius: 10px;
+      background-color: transparent; /* will be set inline */
+      border: 2px solid #ccc;
+    }
+    /* Fusion Bar Container & Bar */
+    #fusionBarContainer {
+      width: 100px;
+      height: 20px;
+      border: 2px solid #ccc;
+      background-color: #eee;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    #fusionBar {
+      height: 100%;
+      width: 0;
+      background-color: #ccc;
+      transition: width 0.5s, background-color 0.5s;
+    }
+    /* Game container */
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      grid-gap: 5px;
+      margin-bottom: 20px;
+    }
+    .tile {
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      background-color: #c78b21;
+      border-radius: 10px;
+      transition: transform 0.5s, opacity 0.5s, background-color 0.5s;
+    }
+    /* Tile Colors */
+    .tile-2 { background-color: #79bff2; }
+    .tile-4 { background-color: #6395f5; }
+    .tile-8 { background-color: #5f7cf6; }
+    .tile-16 { background-color: #3b5ef6; }
+    .tile-32 { background-color: #72edcf; }
+    .tile-64 { background-color: #61edcc; }
+    .tile-128 { background-color: #50edc8; }
+    .tile-256 { background-color: #3fedc5; }
+    .tile-512 { background-color: #2eedc2; }
+    .tile-1024 { background-color: #52c27f; }
+    .tile-2048 { background-color: #ed6e29; }
+    /* Purple D tile – note that we don’t include a base background color here since we set it inline as well */
+    .tile-d { background-color: purple; color: white; }
+    /* Bomb tile */
+    .tile-bomb {
+      background-color: red;
+      color: white;
+    }
+    /* Selected for swapping (green outline) */
+    .selected-swap {
+      outline: 5px solid green;
+    }
+    /* Selected row or col highlighting (blue outline) */
+    .selected {
+      outline: 5px solid blue;
+    }
+    button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 20px;
+      gap: 5px;
+    }
+    .cooldown-bar-container {
+      width: 100px;
+      height: 10px;
+      background-color: #ccc;
+      margin-bottom: 10px;
+    }
+    .cooldown-bar {
+      height: 100%;
+      width: 0;
+      background-color: #FFFF00;
+    }
+    .red-outline {
+      outline: 5px solid red;
+      transition: outline 0.5s;
+      z-index: 999;
+    }
+.purple-outline {
+  outline: 5px solid #FF00FF; /* Added 'solid' */
+  transition: outline-color 0.5s; /* Transition only works on 'outline-color' */
+  position: relative; /* Ensures z-index works */
+  z-index: 999;
 }
 
-
-        .tile-2 { background-color: #79bff2; }
-        .tile-4 { background-color: #6395f5; }
-        .tile-8 { background-color: #5f7cf6; }
-        .tile-16 { background-color: #3b5ef6; }
-        .tile-32 { background-color: #72edcf; }
-        .tile-64 { background-color: #61edcc; }
-        .tile-128 { background-color: #50edc8; }
-        .tile-256 { background-color: #3fedc5; }
-        .tile-512 { background-color: #2eedc2; }
-        .tile-1024 { background-color: #52c27f; }
-        .tile-2048 { background-color: #ed6e29; }
-        .tile-bomb {
-    background-color: red;
-    color: white;
-}
-
-
-        .selected {
-            outline: 5px solid blue;
-        }
-        .selected-swap {
-            outline: 5px solid green;
-        }
-        button {
-            padding: 10px;
-            margin: 5px;
-            font-size: 1rem;
-            cursor: pointer;
-        }
-
-        .controls {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
-
-        .cooldown-bar-container {
-            width: 100px;
-            height: 10px;
-            background-color: #ccc;
-            margin-bottom: 10px;
-        }
-
-        .cooldown-bar {
-            height: 100%;
-            width: 0;
-            background-color: #FFFF00;
-        }
-
-.locked {
-    /* No pointer-events restriction */
-    /* No opacity change */
-}
-
-.red-outline {
-    outline: 5px solid red;
-    transition: outline 0.5s;
-    z-index:999
-}
-
-    </style>
+  </style>
 </head>
 <body>
-    <div class="game-container">
-        <div class="cooldown-bar-container">
-            <div class="cooldown-bar" id="cooldownBar"></div>
+  <div class="game-area">
+    <!-- Sidebar with Next Tile and Fusion Bar -->
+    <div class="sidebar">
+      <div id="nextTileContainer">
+        <h3>Next Tile</h3>
+        <div id="nextTileDisplay" class="tile"></div>
+      </div>
+      <div id="fusionContainer">
+        <h3>Fusion Bar</h3>
+        <div id="fusionBarContainer">
+          <div id="fusionBar"></div>
         </div>
-        <div class="grid" id="gameBoard"></div>
-        <div class="controls">
-            <button onclick="selectRow(0)">Row 1</button>
-            <button onclick="selectRow(1)">Row 2</button>
-            <button onclick="selectRow(2)">Row 3</button>
-            <button onclick="selectRow(3)">Row 4</button>
-            <button onclick="selectCol(0)">Col 1</button>
-            <button onclick="selectCol(1)">Col 2</button>
-            <button onclick="selectCol(2)">Col 3</button>
-            <button onclick="selectCol(3)">Col 4</button>
-        </div>
+      </div>
     </div>
+    <!-- Main Game Container -->
+    <div class="game-container">
+      <div class="cooldown-bar-container">
+        <div class="cooldown-bar" id="cooldownBar"></div>
+      </div>
+      <div class="grid" id="gameBoard"></div>
+      <div class="controls">
+        <button onclick="selectRow(0)">Row 1</button>
+        <button onclick="selectRow(1)">Row 2</button>
+        <button onclick="selectRow(2)">Row 3</button>
+        <button onclick="selectRow(3)">Row 4</button>
+        <button onclick="selectCol(0)">Col 1</button>
+        <button onclick="selectCol(1)">Col 2</button>
+        <button onclick="selectCol(2)">Col 3</button>
+        <button onclick="selectCol(3)">Col 4</button>
+      </div>
+    </div>
+  </div>
 
-    <script>
-        const boardSize = 4;
-        let grid = [];
-        let selectedRow = null;
-        let selectedCol = null;
-        const gameBoard = document.getElementById('gameBoard');
-        let cooldown = 0;
-        let cooldownInterval;
-        let locked = false;
-        let selectedTile = null;
-        let SwapHappened = false
+  <script>
+    const boardSize = 4;
+    let grid = [];
+    let selectedRow = null;
+    let selectedCol = null;
+    const gameBoard = document.getElementById('gameBoard');
+    let cooldown = 0;
+    let cooldownInterval;
+    let locked = false;
+    let selectedTile = null;
+    let swapHappened = false;
 
-        // Initialize the board
-        function createBoard() {
-            grid = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
-            addRandomTile();
-            addRandomTile();
-            updateBoard();
+    // Global variable to hold the next tile value.
+    // We'll represent tiles as numbers, or as special strings: "B" for bomb, "D" for the purple tile.
+    let nextTileValue;
+
+    // Mapping tile values to colors (for normal number tiles)
+    const tileColors = {
+      2: "#79bff2",
+      4: "#6395f5",
+      8: "#5f7cf6",
+      16: "#3b5ef6",
+      32: "#72edcf",
+      64: "#61edcc",
+      128: "#50edc8",
+      256: "#3fedc5",
+      512: "#2eedc2",
+      1024: "#52c27f",
+      2048: "#ed6e29"
+    };
+
+    // Helper function to generate a random tile value.
+    // We now include a 5% chance for a D tile, 10% chance for a bomb, else normal numbers.
+    function generateRandomTileValue() {
+      const rand = Math.random();
+      if (rand < 0.05) { 
+        return "D";  // New purple tile labeled D
+      } else if (rand < 0.15) {
+        return "B";  // Bomb
+      } else {
+        return Math.random() < 0.9 ? 2 : 4;
+      }
+    }
+
+    // Update the Next Tile preview display.
+    function updateNextTileDisplay() {
+      const nextTileDisplay = document.getElementById('nextTileDisplay');
+      // Reset classes, keeping the base "tile" style.
+      nextTileDisplay.className = 'tile';
+      nextTileDisplay.textContent = nextTileValue;
+      nextTileDisplay.style.backgroundColor = ""; // Clear inline background
+
+      // Apply color or class depending on the tile.
+      if (nextTileValue === "B") {
+        nextTileDisplay.classList.add('tile-bomb');
+      } else if (nextTileValue === "D") {
+        // For D tile, we want purple.
+        nextTileDisplay.classList.add('tile-d');
+        nextTileDisplay.style.backgroundColor = "purple";
+      } else {
+        // Number tile: use inline color from mapping.
+        if (tileColors[nextTileValue]) {
+          nextTileDisplay.style.backgroundColor = tileColors[nextTileValue];
         }
+        nextTileDisplay.classList.add(`tile-${nextTileValue}`);
+      }
+    }
 
-// Function to update the board and re-render tiles
-function updateBoard() {
-    gameBoard.innerHTML = '';
-    grid.forEach((row, rowIndex) => {
+    // Fusion Bar mechanics.
+    let fusionCounter = 0;
+    let fusionMode = false;
+    let fusionInterval;
+    function startFusionBar() {
+      fusionInterval = setInterval(() => {
+        if (!fusionMode) {
+        if (locked === false){
+          fusionCounter++;
+          }
+          if (fusionCounter >= 60) {
+            fusionCounter = 60;
+            fusionMode = true;
+            cooldown = 30
+            startCooldown()
+          }
+          updateFusionBar();
+        }
+      }, 1000);
+    }
+    function updateFusionBar() {
+      const fusionBar = document.getElementById('fusionBar');
+      fusionBar.style.width = `${(fusionCounter / 60) * 100}%`;
+      if (fusionMode) {
+        fusionBar.style.backgroundColor = "gold"; // indicate fusion mode active
+      } else {
+        fusionBar.style.backgroundColor = "#ccc";
+      }
+    }
+    function resetFusionBar() {
+      fusionCounter = 0;
+      fusionMode = false;
+      updateFusionBar();
+    }
+
+    // Initialize the board and the next tile preview.
+    function createBoard() {
+      grid = Array.from({ length: boardSize }, () => Array(boardSize).fill(null));
+      // Generate the initial next tile.
+      nextTileValue = generateRandomTileValue();
+      updateNextTileDisplay();
+      // Add two starting tiles.
+      addRandomTile();
+      addRandomTile();
+      updateBoard();
+    }
+
+    // Update the board by rendering each tile.
+    function updateBoard() {
+      gameBoard.innerHTML = '';
+      grid.forEach((row, rowIndex) => {
         row.forEach((tile, colIndex) => {
-            const tileElement = document.createElement('div');
-            tileElement.classList.add('tile');
-            tileElement.setAttribute("data-row", rowIndex);
-            tileElement.setAttribute("data-col", colIndex);
+          const tileElement = document.createElement('div');
+          tileElement.classList.add('tile');
+          tileElement.setAttribute("data-row", rowIndex);
+          tileElement.setAttribute("data-col", colIndex);
 
-            if (tile) {
-                tileElement.textContent = tile;
-                if (tile === "B") { 
-                tileElement.classList.add('red-outline'); // Use red outline class for smoother transition
-        
-                    tileElement.classList.add('tile-bomb');
-                } else {
-                    tileElement.classList.add(`tile-${tile}`);
-                }
+          if (tile !== null) {
+            tileElement.textContent = tile;
+            if (tile === "B") {
+              tileElement.classList.add('red-outline');
+              tileElement.classList.add('tile-bomb');
+            } else if (tile === "D") {
+              tileElement.classList.add('tile-d');
+              tileElement.style.backgroundColor = "purple";
+            tileElement.classList.add('purple-outline');
+            } else {
+              // Number tile.
+              if (tileColors[tile]) {
+                tileElement.style.backgroundColor = tileColors[tile];
+              }
+              tileElement.classList.add(`tile-${tile}`);
             }
+          }
 
-            if (selectedRow !== null && rowIndex === selectedRow) {
-                tileElement.classList.add('selected');
-            }
-            if (selectedCol !== null && colIndex === selectedCol) {
-                tileElement.classList.add('selected');
-            }
-            if (locked) {
-                tileElement.classList.add('locked');
-            }
-            if (selectedTile && selectedTile.row === rowIndex && selectedTile.col === colIndex) {
-                tileElement.classList.add('selected-swap');
-            }
-
-            tileElement.addEventListener('click', () => handleTileClick(rowIndex, colIndex));
-            gameBoard.appendChild(tileElement);
+          if (selectedRow !== null && rowIndex === selectedRow) {
+            tileElement.classList.add('selected');
+          }
+          if (selectedCol !== null && colIndex === selectedCol) {
+            tileElement.classList.add('selected');
+          }
+          if (locked) {
+            tileElement.classList.add('locked');
+          }
+          if (selectedTile && selectedTile.row === rowIndex && selectedTile.col === colIndex) {
+            tileElement.classList.add('selected-swap');
+          }
+tileElement.addEventListener('click', () => {
+    if (locked || fusionMode) {
+        tileElement.classList.toggle('selected-swap');
+        handleTileClick(rowIndex, colIndex);
+    } else {
+        // Remove 'selected-swap' from all tiles
+        document.querySelectorAll('.selected-swap').forEach(tile => {
+            tile.classList.remove('selected-swap');
         });
-    });
+    }
+});
 
-    if (locked) {
+gameBoard.appendChild(tileElement);
+
+        });
+      });
+
+      if (locked) {
         selectedRow = null;
         selectedCol = null;
+      }
     }
-}
-function handleTileClick(rowIndex, colIndex) {
-    if (!locked) return; // Only allow swapping when locked
 
-    if (!selectedTile) {
-        // First click: Select tile
+    // Handle clicks on tiles (for swapping/merging).
+    function handleTileClick(rowIndex, colIndex) {
+      if (!locked) return; // Only allow swapping when locked
+
+      if (!selectedTile) {
+        // First click: select the tile.
         selectedTile = { row: rowIndex, col: colIndex };
-    } else if (selectedTile.row === rowIndex && selectedTile.col === colIndex) {
-        // Deselect the tile if the same tile is clicked again
+      } else if (selectedTile.row === rowIndex && selectedTile.col === colIndex) {
+        // Deselect if same tile clicked.
         selectedTile = null;
-    } else {
-        // Second click: Swap or merge
-        let tile1 = grid[rowIndex][colIndex];
-        let tile2 = grid[selectedTile.row][selectedTile.col];
+      } else {
+        // Second click: attempt merge/swap.
+        let tileA = grid[selectedTile.row][selectedTile.col];
+        let tileB = grid[rowIndex][colIndex];
 
-        let mergeRow = rowIndex;
-        let mergeCol = colIndex;
-
-        if (tile1 === "B" || tile2 === "B") {
-            // Bomb merges with anything, deleting both
-            grid[rowIndex][colIndex] = null;
+        // Fusion mode: if active and both are number tiles (not bombs, not D)
+        if (fusionMode && typeof tileA === 'number' && typeof tileB === 'number') {
+          // Multiply tileA by tileB, cap at 2048.
+          grid[selectedTile.row][selectedTile.col] = null;
+          grid[rowIndex][colIndex] = Math.min(tileA * tileB, 2048);
+          resetFusionBar();
+        }
+        // "D" tile merging: if one is "D" and the other is a number.
+        else if ((tileA === "D" && typeof tileB === 'number') ||
+                 (tileB === "D" && typeof tileA === 'number')) {
+          if (tileA === "D" && typeof tileB === 'number') {
             grid[selectedTile.row][selectedTile.col] = null;
-        } else {
-            // Swap tiles normally
-            [grid[rowIndex][colIndex], grid[selectedTile.row][selectedTile.col]] = [tile2, tile1];
+            grid[rowIndex][colIndex] = Math.min(tileB * 2, 2048);
+          } else if (tileB === "D" && typeof tileA === 'number') {
+            grid[rowIndex][colIndex] = Math.min(tileA * 2, 2048);
+            grid[selectedTile.row][selectedTile.col] = null;
+          }
+        }
+        // Bomb merging: if one is a bomb, remove both.
+        else if (tileA === "B" || tileB === "B") {
+          grid[selectedTile.row][selectedTile.col] = null;
+          grid[rowIndex][colIndex] = null;
+        }
+        // Otherwise, perform a normal swap (or merge if values are equal, per your original game logic).
+        else {
+          // For a “normal” merge in your game you might only merge equal numbers.
+          if (tileA === tileB && typeof tileA === 'number') {
+            grid[selectedTile.row][selectedTile.col] = null;
+            grid[rowIndex][colIndex] = tileA * 2;
+          } else {
+            // Otherwise just swap.
+            [grid[selectedTile.row][selectedTile.col], grid[rowIndex][colIndex]] = [tileB, tileA];
             swapHappened = true;
+          }
         }
 
-        // Temporarily add red-outline to merge location
-        let mergedTile = document.querySelector(`[data-row='${mergeRow}'][data-col='${mergeCol}']`);
+        // Optionally add a temporary red outline to indicate the merge location.
+        let mergedTile = document.querySelector(`[data-row='${rowIndex}'][data-col='${colIndex}']`);
         if (mergedTile) {
-            mergedTile.classList.add("red-outline");
-            setTimeout(() => {
-                mergedTile.classList.remove("red-outline");
-            }, 2000);
+          mergedTile.classList.add("red-outline");
+          setTimeout(() => mergedTile.classList.remove("red-outline"), 2000);
         }
 
         selectedTile = null;
         if (swapHappened) resetCooldown();
         updateBoard();
+      }
     }
-}
 
-
-
-        // Add a random tile (2 or 4)
-function addRandomTile() {
-    const emptyTiles = [];
-    for (let row = 0; row < boardSize; row++) {
+    // Add a random tile using the current nextTileValue, then generate a new next tile.
+    function addRandomTile() {
+      const emptyTiles = [];
+      for (let row = 0; row < boardSize; row++) {
         for (let col = 0; col < boardSize; col++) {
-            if (grid[row][col] === null) {
-                emptyTiles.push({ row, col });
-            }
+          if (grid[row][col] === null) {
+            emptyTiles.push({ row, col });
+          }
         }
-    }
-
-    if (emptyTiles.length > 0) {
+      }
+      if (emptyTiles.length > 0) {
         const randomTile = emptyTiles[Math.floor(Math.random() * emptyTiles.length)];
-        let randomValue;
-        if (Math.random() < 0.1) { // 10% chance to spawn a bomb
-            randomValue = "B"; 
-        } else {
-            randomValue = Math.random() < 0.9 ? 2 : 4;
-        }
-        grid[randomTile.row][randomTile.col] = randomValue;
+        grid[randomTile.row][randomTile.col] = nextTileValue;
         updateBoard();
+        nextTileValue = generateRandomTileValue();
+        updateNextTileDisplay();
+      }
     }
-}
 
-
-        function startCooldown() {
-    cooldownInterval = setInterval(() => {
+    function startCooldown() {
+      cooldownInterval = setInterval(() => {
         if (cooldown < 30) { 
-            cooldown++;
-            const cooldownBar = document.getElementById('cooldownBar');
-            cooldownBar.style.width = `${Math.min((cooldown / 30) * 100, 100)}%`; // Ensures max width is 100%
+          cooldown++;
+          const cooldownBar = document.getElementById('cooldownBar');
+          cooldownBar.style.width = `${Math.min((cooldown / 30) * 100, 100)}%`;
         }
         if (cooldown === 30) {
-            locked = true;
-            selectedCol = null;
-            selectedRow = null;
-            updateBoard()
-            clearInterval(cooldownInterval); // Stops interval at max cooldown
+          locked = true;
+          selectedCol = null;
+          selectedRow = null;
+          updateBoard();
+          clearInterval(cooldownInterval);
         }
-    }, 1000);
-}
-
-
-        // Reset cooldown timer
-        function resetCooldown() {
-            clearInterval(cooldownInterval);
-            cooldown = 0;
-            locked = false;
-            selectedTile = null;
-            const cooldownBar = document.getElementById('cooldownBar');
-            cooldownBar.style.width = '0';
-            startCooldown();
-        }
-
-
-        function mergeTiles(aRow, aCol, bRow, bCol) {
-            if (grid[aRow][aCol] === "B" || grid[bRow][bCol] === "B") {
-                grid[aRow][aCol] = null;
-                grid[bRow][bCol] = null;
-            } else if (grid[aRow][aCol] === grid[bRow][bCol]) {
-                grid[aRow][aCol] *= 2;
-                grid[bRow][bCol] = null;
-            }
-            updateBoard();
-        }
-
-        function highlightMerge(row, col) {
-            setTimeout(() => {
-                const tileElement = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
-                if (tileElement) {
-                    tileElement.classList.add('red-outline');
-                    setTimeout(() => tileElement.classList.remove('red-outline'), 2000);
-                }
-            }, 50);
-        }
-
-function moveRow(rowIndex, direction) {
-    let row = grid[rowIndex].map((tile, i) => ({ value: tile, originalIndex: i })).filter(tile => tile.value !== null);
-    if (direction === 'right') row.reverse();
-
-    for (let i = 0; i < row.length - 1; i++) {
-        if (row[i].value === "B" && row[i + 1].value !== "B") {
-            // Bomb merges with another tile (delete other tile)
-            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - i : i + 1);
-            row.splice(i + 1, 1);
-        } else if (row[i].value !== "B" && row[i + 1].value === "B") {
-            // Another tile merges with a bomb (delete other tile)
-            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - (i + 1) : i);
-            row[i].value = "B";
-            row.splice(i + 1, 1);
-        } else if (row[i].value === row[i + 1].value) {
-            // Normal merge (no highlight)
-            row[i].value *= 2;
-            row.splice(i + 1, 1);
-        }
+      }, 1000);
     }
 
-    while (row.length < boardSize) row.push({ value: null, originalIndex: -1 });
-    if (direction === 'right') row.reverse();
+    function resetCooldown() {
+      clearInterval(cooldownInterval);
+      cooldown = 0;
+      locked = false;
+      selectedTile = null;
+      const cooldownBar = document.getElementById('cooldownBar');
+      cooldownBar.style.width = '0';
+      startCooldown();
+    }
 
-    grid[rowIndex] = row.map(tile => tile.value);
-    updateBoard();
-    addRandomTile();
+function moveRow(rowIndex, direction) {
+  let row = grid[rowIndex]
+    .map((tile, i) => ({ value: tile, originalIndex: i }))
+    .filter(tile => tile.value !== null);
+
+  if (direction === 'right') row.reverse();
+
+  let newRow = [];
+  for (let i = 0; i < row.length; i++) {
+    if (i < row.length - 1 && (row[i].value === "B" || row[i + 1].value === "B")) {
+      // Bomb merge: remove both.
+      let mergeIndex = direction === 'right' ? boardSize - 1 - i : i;
+      highlightMerge(rowIndex, mergeIndex);
+      i++;
+    } else if (i < row.length - 1 && (row[i].value === row[i + 1].value || row[i].value === "D" || row[i + 1].value === "D")) {
+      // "D" tile merges as if it's the same as the other tile.
+      let mergeValue = row[i].value === "D" ? row[i + 1].value * 2 : row[i].value * 2;
+      newRow.push({ value: mergeValue, originalIndex: row[i].originalIndex });
+      i++;
+    } else {
+      newRow.push(row[i]);
+    }
+  }
+  while (newRow.length < boardSize) newRow.push({ value: null, originalIndex: -1 });
+  if (direction === 'right') newRow.reverse();
+  grid[rowIndex] = newRow.map(tile => tile.value);
+  updateBoard();
+  addRandomTile();
 }
 
 function moveColumn(colIndex, direction) {
-    let column = [];
-    for (let i = 0; i < boardSize; i++) {
-        if (grid[i][colIndex] !== null) column.push({ value: grid[i][colIndex], originalIndex: i });
+  let column = [];
+  for (let i = 0; i < boardSize; i++) {
+    if (grid[i][colIndex] !== null) {
+      column.push({ value: grid[i][colIndex], originalIndex: i });
     }
-    if (direction === 'down') column.reverse();
-
-    for (let i = 0; i < column.length - 1; i++) {
-        if (column[i].value === "B" && column[i + 1].value !== "B") {
-            // Bomb merges with another tile (delete other tile)
-       column[i].value = null;
-            highlightMerge(direction === 'down' ? boardSize - 1 - i : i + 1, colIndex);
-            column.splice(i + 1, 1);
-        } else if (column[i].value !== "B" && column[i + 1].value === "B") {
-            // Another tile merges with a bomb (delete other tile)
-            highlightMerge(direction === 'down' ? boardSize - 1 - (i + 1) : i, colIndex);
-            column[i].value = null;
-            column.splice(i + 1, 1);
-        } else if (column[i].value === column[i + 1].value) {
-            // Normal merge (no highlight)
-            column[i].value *= 2;
-            column.splice(i + 1, 1);
-        }
+  }
+  if (direction === 'down') column.reverse();
+  let newColumn = [];
+  for (let i = 0; i < column.length; i++) {
+    if (i < column.length - 1 && (column[i].value === "B" || column[i + 1].value === "B")) {
+      highlightMerge(direction === 'down' ? boardSize - 1 - i : i, colIndex);
+      i++;
+    } else if (i < column.length - 1 && (column[i].value === column[i + 1].value || column[i].value === "D" || column[i + 1].value === "D")) {
+      // "D" tile merges as if it's the same as the other tile.
+      let mergeValue = column[i].value === "D" ? column[i + 1].value * 2 : column[i].value * 2;
+      newColumn.push({ value: mergeValue, originalIndex: column[i].originalIndex });
+      i++;
+    } else {
+      newColumn.push(column[i]);
     }
-
-    while (column.length < boardSize) column.push({ value: null, originalIndex: -1 });
-    if (direction === 'down') column.reverse();
-
-    for (let i = 0; i < boardSize; i++) {
-        grid[i][colIndex] = column[i].value;
-    }
-    updateBoard();
-    addRandomTile();
-}
-function moveRow(rowIndex, direction) {
-    let row = grid[rowIndex].map((tile, i) => ({ value: tile, originalIndex: i })).filter(tile => tile.value !== null);
-    if (direction === 'right') row.reverse();
-
-    for (let i = 0; i < row.length - 1; i++) {
-        if (row[i].value === "B" && row[i + 1].value !== "B") {
-            // Bomb merges with another tile (delete other tile)
-            row[i].value = null;
-      
-            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - i : i + 1);
-            row.splice(i + 1, 1);
-        } else if (row[i].value !== "B" && row[i + 1].value === "B") {
-            // Another tile merges with a bomb (delete other tile)
-            highlightMerge(rowIndex, direction === 'right' ? boardSize - 1 - (i + 1) : i);
-            row[i].value = null;
-            row.splice(i + 1, 1);
-        } else if (row[i].value === row[i + 1].value) {
-            // Normal merge (no highlight)
-            row[i].value *= 2;
-            row.splice(i + 1, 1);
-        }
-    }
-
-    while (row.length < boardSize) row.push({ value: null, originalIndex: -1 });
-    if (direction === 'right') row.reverse();
-
-    grid[rowIndex] = row.map(tile => tile.value);
-    updateBoard();
-    addRandomTile();
+  }
+  while (newColumn.length < boardSize) newColumn.push({ value: null, originalIndex: -1 });
+  if (direction === 'down') newColumn.reverse();
+  for (let i = 0; i < boardSize; i++) {
+    grid[i][colIndex] = newColumn[i].value;
+  }
+  updateBoard();
+  addRandomTile();
 }
 
-function moveColumn(colIndex, direction) {
-    let column = [];
-    for (let i = 0; i < boardSize; i++) {
-        if (grid[i][colIndex] !== null) column.push({ value: grid[i][colIndex], originalIndex: i });
-    }
-    if (direction === 'down') column.reverse();
-
-    for (let i = 0; i < column.length - 1; i++) {
-        if (column[i].value === "B" && column[i + 1].value !== "B") {
-            // Bomb merges with another tile (delete other tile)
-            highlightMerge(direction === 'down' ? boardSize - 1 - i : i + 1, colIndex);
-            column.splice(i + 1, 1);
-        } else if (column[i].value !== "B" && column[i + 1].value === "B") {
-            // Another tile merges with a bomb (delete other tile)
-            highlightMerge(direction === 'down' ? boardSize - 1 - (i + 1) : i, colIndex);
-            column[i].value = "B";
-            column.splice(i + 1, 1);
-        } else if (column[i].value === column[i + 1].value) {
-            // Normal merge (no highlight)
-            column[i].value *= 2;
-            column.splice(i + 1, 1);
+    function highlightMerge(row, col) {
+      setTimeout(() => {
+        const tileElement = document.querySelector(`[data-row='${row}'][data-col='${col}']`);
+        if (tileElement) {
+          tileElement.classList.add('red-outline');
+          setTimeout(() => tileElement.classList.remove('red-outline'), 2000);
         }
+      }, 50);
     }
 
-    while (column.length < boardSize) column.push({ value: null, originalIndex: -1 });
-    if (direction === 'down') column.reverse();
-
-    for (let i = 0; i < boardSize; i++) {
-        grid[i][colIndex] = column[i].value;
-    }
-    updateBoard();
-    addRandomTile();
-}
-
-function selectRow(row) {
-    if (!locked) { // Prevents selection when locked
+    function selectRow(row) {
+      if (!locked) {
         selectedRow = row;
         selectedCol = null;
+      }
+      updateBoard();
     }
-    updateBoard();
-}
 
-function selectCol(col) {
-    if (!locked) { // Prevents selection when locked
+    function selectCol(col) {
+      if (!locked) {
         selectedCol = col;
         selectedRow = null;
+      }
+      updateBoard();
     }
-    updateBoard();
-}
 
+    // Touch swipe controls remain unchanged.
+    let touchStartX = 0;
+    let touchStartY = 0;
+    gameBoard.addEventListener('touchstart', (event) => {
+      const touch = event.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    });
+    gameBoard.addEventListener('touchend', (event) => {
+      const touch = event.changedTouches[0];
+      const touchEndX = touch.clientX;
+      const touchEndY = touch.clientY;
+      const diffX = touchEndX - touchStartX;
+      const diffY = touchEndY - touchStartY;
+      if (Math.abs(diffX) > Math.abs(diffY)) {
+        if (diffX > 0 && selectedRow !== null) {
+          moveRow(selectedRow, 'right');
+        } else if (diffX < 0 && selectedRow !== null) {
+          moveRow(selectedRow, 'left');
+        }
+      } else {
+        if (diffY > 0 && selectedCol !== null) {
+          moveColumn(selectedCol, 'down');
+        } else if (diffY < 0 && selectedCol !== null) {
+          moveColumn(selectedCol, 'up');
+        }
+      }
+    });
 
-// Initialize game
-createBoard();
-startCooldown();
-
-        // Add touch swipe controls
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        gameBoard.addEventListener('touchstart', (event) => {
-            const touch = event.touches[0];
-            touchStartX = touch.clientX;
-            touchStartY = touch.clientY;
-        });
-
-        gameBoard.addEventListener('touchend', (event) => {
-            const touch = event.changedTouches[0];
-            const touchEndX = touch.clientX;
-            const touchEndY = touch.clientY;
-
-            const diffX = touchEndX - touchStartX;
-            const diffY = touchEndY - touchStartY;
-
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                // Horizontal swipe
-                if (diffX > 0 && selectedRow !== null) {
-                    moveRow(selectedRow, 'right');
-                } else if (diffX < 0 && selectedRow !== null) {
-                    moveRow(selectedRow, 'left');
-                }
-            } else {
-                // Vertical swipe
-                if (diffY > 0 && selectedCol !== null) {
-                    moveColumn(selectedCol, 'down');
-                } else if (diffY < 0 && selectedCol !== null) {
-                    moveColumn(selectedCol, 'up');
-                }
-            }
-        });
-
-        // Initialize game
-        createBoard();
-        startCooldown();
-    </script>
+    // Initialize game, cooldown, and fusion bar.
+    createBoard();
+    startCooldown();
+    startFusionBar();
+  </script>
 </body>
 </html>
